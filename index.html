@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Management System</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial;background:#f1f5f9;color:#172554}
+header{background:#123b70;color:white;padding:22px;text-align:center}
+header h2{margin:0}
+main{max-width:950px;margin:20px auto;padding:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{background:white;padding:18px;border-radius:12px;box-shadow:0 2px 8px #0001}
+.card h3{margin:5px 0;color:#2563eb}
+form{background:white;padding:18px;border-radius:12px;margin:18px 0}
+input{width:100%;padding:12px;margin:7px 0 12px;border:1px solid #cbd5e1;border-radius:7px}
+button{background:#2563eb;color:white;border:0;padding:11px 15px;border-radius:7px;cursor:pointer;margin:3px}
+.delete{background:#dc2626}
+.edit{background:#0f766e}
+.search{margin:10px 0}
+table{width:100%;border-collapse:collapse;background:white;min-width:650px}
+th,td{padding:12px;border-bottom:1px solid #ddd;text-align:left}
+th{background:#dbeafe}
+.tablebox{overflow-x:auto;border-radius:10px}
+h3{margin-top:12px}
+@media(max-width:550px){
+.stats{grid-template-columns:1fr}
+main{padding:10px}
+}
+</style>
+</head>
+<body>
+
+<header>
+<h2>Student Management System</h2>
+<p>Cloud-Based College Project</p>
+</header>
+
+<main>
+
+<div class="stats">
+<div class="card">
+Total Students
+<h3 id="total">0</h3>
+</div>
+<div class="card">
+Average Marks
+<h3 id="average">0</h3>
+</div>
+<div class="card">
+Average Attendance
+<h3 id="attendance">0%</h3>
+</div>
+</div>
+
+<form id="studentForm">
+<h3 id="formTitle">Add New Student</h3>
+
+<input id="name" placeholder="Student Name" required>
+<input id="roll" placeholder="Roll Number" required>
+<input id="course" placeholder="Course / Branch" required>
+<input id="email" type="email" placeholder="Email" required>
+<input id="marks" type="number" min="0" max="100" placeholder="Marks (0-100)" required>
+<input id="att" type="number" min="0" max="100" placeholder="Attendance %" required>
+
+<button type="submit" id="saveBtn">Add Student</button>
+<button type="button" onclick="resetForm()" style="background:#64748b">Clear</button>
+</form>
+
+<h3>Student Records</h3>
+<input class="search" id="search" placeholder="Search by name or roll number..." oninput="render()">
+
+<div class="tablebox">
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Roll No.</th>
+<th>Course</th>
+<th>Marks</th>
+<th>Attendance</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody id="studentList"></tbody>
+</table>
+</div>
+
+</main>
+
+<script>
+let students=JSON.parse(localStorage.getItem("students")||"[]");
+let editId=null;
+
+function save(){
+localStorage.setItem("students",JSON.stringify(students));
+}
+
+function resetForm(){
+document.getElementById("studentForm").reset();
+editId=null;
+document.getElementById("formTitle").innerText="Add New Student";
+document.getElementById("saveBtn").innerText="Add Student";
+}
+
+document.getElementById("studentForm").addEventListener("submit",function(e){
+e.preventDefault();
+
+let s={
+id:editId||Date.now(),
+name:document.getElementById("name").value.trim(),
+roll:document.getElementById("roll").value.trim(),
+course:document.getElementById("course").value.trim(),
+email:document.getElementById("email").value.trim(),
+marks:Number(document.getElementById("marks").value),
+att:Number(document.getElementById("att").value)
+};
+
+if(students.some(x=>x.roll.toLowerCase()===s.roll.toLowerCase()&&x.id!==s.id)){
+alert("Roll number already exists!");
+return;
+}
+
+if(editId){
+students=students.map(x=>x.id===editId?s:x);
+}else{
+students.push(s);
+}
+
+save();
+resetForm();
+render();
+});
+
+function editStudent(id){
+let s=students.find(x=>x.id===id);
+editId=id;
+document.getElementById("name").value=s.name;
+document.getElementById("roll").value=s.roll;
+document.getElementById("course").value=s.course;
+document.getElementById("email").value=s.email;
+document.getElementById("marks").value=s.marks;
+document.getElementById("att").value=s.att;
+document.getElementById("formTitle").innerText="Edit Student";
+document.getElementById("saveBtn").innerText="Update Student";
+window.scrollTo(0,0);
+}
+
+function deleteStudent(id){
+if(confirm("Delete this student?")){
+students=students.filter(x=>x.id!==id);
+save();
+render();
+}
+}
+
+function render(){
+let q=document.getElementById("search").value.toLowerCase();
+let filtered=students.filter(s=>
+s.name.toLowerCase().includes(q)||
+s.roll.toLowerCase().includes(q)
+);
+
+document.getElementById("studentList").innerHTML=
+filtered.map(s=>`
+<tr>
+<td>${escapeHTML(s.name)}</td>
+<td>${escapeHTML(s.roll)}</td>
+<td>${escapeHTML(s.course)}</td>
+<td>${s.marks}</td>
+<td>${s.att}%</td>
+<td>
+<button class="edit" onclick="editStudent(${s.id})">Edit</button>
+<button class="delete" onclick="deleteStudent(${s.id})">Delete</button>
+</td>
+</tr>`).join("");
+
+document.getElementById("total").innerText=students.length;
+
+let avg=students.length?
+students.reduce((a,s)=>a+s.marks,0)/students.length:0;
+
+let att=students.length?
+students.reduce((a,s)=>a+s.att,0)/students.length:0;
+
+document.getElementById("average").innerText=avg.toFixed(1);
+document.getElementById("attendance").innerText=att.toFixed(1)+"%";
+}
+
+function escapeHTML(str){
+return str.replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",
+'"':"&quot;","'":"&#39;"
+}[c]));
+}
+
+render();
+</script>
+
+</body>
+</html>
